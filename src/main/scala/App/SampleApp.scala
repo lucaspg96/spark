@@ -1,8 +1,9 @@
 
+package App
+
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
-
 import org.apache.log4j.{Logger, Level}
  
 object SampleApp {
