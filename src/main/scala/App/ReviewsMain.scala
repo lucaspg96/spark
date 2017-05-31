@@ -37,7 +37,7 @@ object ReviewsMain {
 //                        .sortBy(tuple => tuple._2, ascending=false)
 //                        
 //    val wordsFrequencyCount = wordsFrequency.count()
-//    //println(f"\r$wordsFrequencyCount words mapped")
+//    println(f"\r$wordsFrequencyCount words mapped")
 //    
 //    println("\n\nMost used words:") 
 //    for(k <- wordsFrequency.take(15)){
@@ -64,18 +64,30 @@ object ReviewsMain {
 //                        .reduceByKey((a,b) => a+b)
 //                        .sortBy(tuple => tuple._2, ascending=false)
 //    
-//    println("\n\nMost used topics:")                      
+//    println("\r\n\nMost used topics:")                      
 //    for(k <- topicsFrequency.take(15)){
 //      println("\r"+k._1)
 //    }      
     //-----------------------------------------------
     
     //Sentiment Analisis
-    val sentiments = reviews.map(getSentiment)
-    val sentimentsFrequency = sentiments.reduceByKey((a,b) => a+b)
+//    val sentiments = reviews.map(getSentiment)
+//    val sentimentsFrequency = sentiments.reduceByKey((a,b) => a+b)
+//    
+//    println("\rSentiment Analysis:")
+//    for(k <- sentimentsFrequency.collect()){
+//      println("\r"+k._1+" -> "+k._2)
+//    }
     
-    println("\rSentiment Analysis:")
-    for(k <- sentimentsFrequency.collect()){
+    //Sentence Analisis
+    val sentences = reviews.flatMap(getSentences)
+    val sentencesFrequency = sentences
+                             .map(sentence => (sentence,1))
+                             .reduceByKey((a,b) => a+b)
+                             .sortBy(tuple => tuple._2, ascending=false)
+    
+    println("\r\n\nMost used sentences:")
+    for(k <- sentencesFrequency.take(15)){
       println("\r"+k._1+" -> "+k._2)
     }
   }
@@ -115,5 +127,9 @@ object ReviewsMain {
   
   def getSentiment(r: Review): (SENTIMENT_TYPE,Int) = {
     (detectSentiment(r.text),1)
+  }
+  
+  def getSentences(r: Review): Array[String] = {
+    r.text.split(Array('.','?','!')).filter { s => s.length()>=3 }
   }
 }
