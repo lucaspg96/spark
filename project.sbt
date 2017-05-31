@@ -10,4 +10,7 @@ libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.2"
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-annotations" % "2.7.2"
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.7.2"
 libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.7.2"
-libraryDependencies += "com.typesafe.play" %% "play-json" % "2.5.10"
+
+libraryDependencies += "edu.stanford.nlp" % "stanford-corenlp" % "3.5.1"
+
+libraryDependencies += "edu.stanford.nlp" % "stanford-corenlp" % "3.5.1" classifier "models"
