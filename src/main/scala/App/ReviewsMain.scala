@@ -81,13 +81,28 @@ object ReviewsMain {
     
     //Sentence Analisis
     val sentences = reviews.flatMap(getSentences)
-    val sentencesFrequency = sentences
-                             .map(sentence => (sentence,1))
+    val sentencesCount = sentences.count()
+    println(f"\r$sentencesCount sentences to analyse...")
+//    
+//    val sentencesFrequency = sentences
+//                             .map(sentence => (sentence,1))
+//                             .reduceByKey((a,b) => a+b)
+//                             .sortBy(tuple => tuple._2, ascending=false)
+//    
+//    println("\r\n\nMost used sentences:")
+//    for(k <- sentencesFrequency.take(15)){
+//      println("\r"+k._1+" -> "+k._2)
+//    }
+    
+    //Sentence Semantic Analisis
+    
+    val sentencesSemanticFrequency = sentences
+                             .map(sentence => (getSentiment(sentence)))
                              .reduceByKey((a,b) => a+b)
                              .sortBy(tuple => tuple._2, ascending=false)
     
-    println("\r\n\nMost used sentences:")
-    for(k <- sentencesFrequency.take(15)){
+    println("\r\n\nSentences' semantics:")
+    for(k <- sentencesSemanticFrequency.collect()){
       println("\r"+k._1+" -> "+k._2)
     }
   }
@@ -127,6 +142,10 @@ object ReviewsMain {
   
   def getSentiment(r: Review): (SENTIMENT_TYPE,Int) = {
     (detectSentiment(r.text),1)
+  }
+  
+  def getSentiment(s: String): (SENTIMENT_TYPE,Int) = {
+    (detectSentiment(s),1)
   }
   
   def getSentences(r: Review): Array[String] = {

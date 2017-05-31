@@ -20,7 +20,7 @@ object SentimentAnalysisUtils {
   }
 
   def detectSentiment(message: String): SENTIMENT_TYPE = {
-    RedwoodConfiguration.current().clear().apply()
+    //RedwoodConfiguration.current().clear().apply()
     val pipeline = new StanfordCoreNLP(nlpProps)
 
     val annotation = pipeline.process(message)
