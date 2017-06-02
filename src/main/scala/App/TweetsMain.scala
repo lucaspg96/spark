@@ -30,33 +30,49 @@ object TweetsMain {
     var tweetsCount = tweets.count()
     println(f"\r$tweetsCount tweets loaded")
     
-    //Counting Reviews text words
-    println("Starting word count")
-    val words = tweets.flatMap(splitTweetText).filter(valid)
-
-    val wordsFrequency = words
-                        .map(word => (word,1))
-                        .reduceByKey((a,b) => a+b)
-                        .sortBy(tuple => tuple._2, ascending=false)
-                        
+    //Counting Hashtags per time
+    println("\rStarting hashtags per time count")
+    val tagsPerTime = tweets.filter(tweet => tweet.tags.size>0).flatMap(getTagsByTime)
+    println(tagsPerTime.count())
+    val morningTags = tagsPerTime.filter(tag => tag._2=="MORNING")
+    val afternoonTags = tagsPerTime.filter(tag => tag._2=="AFTERNOON")
+    val nightTags = tagsPerTime.filter(tag => tag._2=="NIGHT")
+    
+    val morningTagsFrequency = morningTags
+                               .map(tag => (tag._1,1))
+                               .reduceByKey((a,b) => a+b)
+                               .sortBy(tuple => tuple._2, ascending=false)
+                               
+    val afternoonTagsFrequency = afternoonTags
+                               .map(tag => (tag._1,1))
+                               .reduceByKey((a,b) => a+b)
+                               .sortBy(tuple => tuple._2, ascending=false)
+    
+    val nightTagsFrequency = nightTags
+                               .map(tag => (tag._1,1))
+                               .reduceByKey((a,b) => a+b)
+                               .sortBy(tuple => tuple._2, ascending=false)
     //val wordsFrequencyCount = wordsFrequency.count()
     //println(f"\r$wordsFrequencyCount words mapped")
     
-    println("\n\nMost used words:") 
-    for(k <- wordsFrequency.take(15)){
-      println("\r"+k._1)
-    }
+    println("\n\n\rMost used tags on morning:") 
+    println("\r"+morningTagsFrequency.take(1).mkString(","))
+    
+    println("\n\n\rMost used tags on morning:") 
+    println("\r"+afternoonTagsFrequency.take(15).mkString(","))
+//    
+    println("\n\n\rMost used tags on morning:") 
+    println("\r"+nightTagsFrequency.take(15).mkString(","))
+//    
     //-----------------------------------------------
     
-    //Time distribution
-//    val months = reviews.map(review => (getMonth(review),1))
-//    
-//    val monthsFrequency = months.reduceByKey((a,b) => a+b).sortBy(tuple => tuple._2, ascending=false)
-//
-//    println("\n\nTime distribution:") 
-//    for(m <- monthsFrequency.collect()){
-//      println("\r"+m._1+" -> "+m._2)
-//    }
+    //Days distribution
+    val tweetsDates = tweets.map(tweet => (tweet.date,1))
+    
+    val tweetsDatesFrequency = tweetsDates.reduceByKey((a,b) => a+b).sortBy(tuple => tuple._1, ascending=false)
+
+    println("\n\nTime distribution:") 
+    println(tweetsDatesFrequency.collect().mkString(","))
     //-----------------------------------------------
     
     //Main topics
@@ -82,21 +98,27 @@ object TweetsMain {
       val text = fields(1).slice(1, fields(1).length()-1)
       //println(text)
       //println("Texto obtido")
+      val time = fields(7).slice(1, fields(7).length()-1).split(" ")(3)
       val date = fields(8).slice(1, fields(8).length()-1)
       //println("Data obtida")
-      val tags = text.split(" ").filter { word => word.length()>0 && word(0)=="#" }
+      //println(text)
+      val tags = text.split(" ").filter { word => word.length()>0 && word.charAt(0)=='#' }
       
-      new Tweet(text.toLowerCase(),date,tags)
+      new Tweet(text.toLowerCase(),date,time,tags)
     }
     else{
       println("Tweet incompleto")
-      new Tweet("","",Array())
+      new Tweet("","","",Array())
     }
     
   }
   
-  def splitTweetText(t: Tweet): Array[String] = {
-    t.text.replace(",","").replace(".","").replace("!","").replace("?","").replaceAll("[^\u0000-\uFFFF]", "").split(" ")
+  def getTagsByTime(t: Tweet): Array[(String,String)] = {
+    //t.text.replace(",","").replace(".","").replace("!","").replace("?","").replaceAll("[^\u0000-\uFFFF]", "").split(" ")
+    val time = getTime(t.time)
+    val tags = t.tags.map { tag => (tag,time) }
+    //println(tags.mkString(","))
+    tags
   }
   
   def validTweet(t: Tweet): Boolean = {
@@ -108,8 +130,17 @@ object TweetsMain {
     word.size>4 && !stopWords.contains(word)
   }
   
-  def getMonth(r:Review): String = {
-    r.createdAt.split(" ")(0)
+  def getTime(t: String): String = {
+    var time ="NIGHT"
+    
+    if (t>="05:00:00" && t<"12:00:00") {
+      time = "MORNING"
+    }
+    else if(t>="12:00:00" && t<"18:00:00"){
+      time = "AFTERNOON"
+    }
+    
+    time
   }
   
   def getSentences(r: Review): Array[String] = {
