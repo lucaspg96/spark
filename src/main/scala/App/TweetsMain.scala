@@ -1,22 +1,25 @@
+import java.io.File
+import java.io.Writer
+
+import org.apache.log4j.Level
+import org.apache.log4j.Logger
+import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
-import org.apache.spark.SparkConf
-
-import org.apache.log4j.{Logger, Level} 
-import Entities.Review
-import org.json4s.jackson.JsonMethods.parse
 import org.json4s._
+import org.json4s.jackson.JsonMethods.parse
 
-import edu.stanford.nlp.sentiment._
-import Utils.SentimentAnalysisUtils.{detectSentiment,SENTIMENT_TYPE}
-
-import scala.io.Source
-import Utils.SentimentAnalysisUtils.SENTIMENT_TYPE
+import Entities.Review
 import Entities.Tweet
+import Utils.SentimentAnalysisUtils.detectSentiment
+import java.io.FileOutputStream
+import java.io.PrintWriter
+import java.io.OutputStreamWriter
+import java.io.BufferedWriter
 
 
 object TweetsMain {
-  val stopWords = Source.fromFile("resources/ptbr.txt").getLines().filter { w => w.length()>0 }
+  //val stopWords = Source.fromFile("resources/ptbr.txt").getLines().filter { w => w.length()>0 }
   def main(args: Array[String]) {
     
     Logger.getLogger("org").setLevel(Level.OFF)
@@ -24,8 +27,10 @@ object TweetsMain {
     //val file = "resources/data/tweets_sample.tsv"
     val conf = new SparkConf().setAppName("Twitters Analyzer Application").setMaster("local[*]")
     val sc = new SparkContext(conf)
-    println("\rStarting")
+    var writer:Writer = null
     
+    println("\rStarting")
+    val k = 20
     val tweets = sc.textFile(file).map(mapTweet).filter(validTweet)
     var tweetsCount = tweets.count()
     println(f"\r$tweetsCount tweets loaded")
@@ -52,18 +57,29 @@ object TweetsMain {
                                .map(tag => (tag._1,1))
                                .reduceByKey((a,b) => a+b)
                                .sortBy(tuple => tuple._2, ascending=false)
-    //val wordsFrequencyCount = wordsFrequency.count()
-    //println(f"\r$wordsFrequencyCount words mapped")
+
     
-    println("\n\n\rMost used tags on morning:") 
-    println("\r"+morningTagsFrequency.take(1).mkString(","))
+    //println("\n\n\rMost used tags on morning:") 
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/tweets/morningHashtags.txt")))
+    writer.write(morningTagsFrequency.take(k).mkString("\n"))
+    writer.close()
+    //println("\r"+morningTagsFrequency.take(k).mkString(","))
     
-    println("\n\n\rMost used tags on morning:") 
-    println("\r"+afternoonTagsFrequency.take(15).mkString(","))
-//    
-    println("\n\n\rMost used tags on morning:") 
-    println("\r"+nightTagsFrequency.take(15).mkString(","))
-//    
+    //println("\n\n\rMost used tags on morning:")
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/tweets/afternoonHashtags.txt")))
+    writer.write(afternoonTagsFrequency.take(k).mkString("\n"))
+    writer.close()
+    //println("\r"+afternoonTagsFrequency.take(k).mkString(","))
+    
+    //println("\n\n\rMost used tags on morning:") 
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/tweets/nightHashtags.txt")))
+    writer.write(nightTagsFrequency.take(k).mkString("\n"))
+    writer.close()
+    //println("\r"+nightTagsFrequency.take(k).mkString(","))
+    
     //-----------------------------------------------
     
     //Days distribution
@@ -71,23 +87,57 @@ object TweetsMain {
     
     val tweetsDatesFrequency = tweetsDates.reduceByKey((a,b) => a+b).sortBy(tuple => tuple._1, ascending=false)
 
-    println("\n\nTime distribution:") 
-    println(tweetsDatesFrequency.collect().mkString(","))
+    //println("\n\nTime distribution:") 
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/tweets/tweetsDatesDistribution.txt")))
+    writer.write(tweetsDatesFrequency.collect().mkString("\n"))
+    writer.close()
+    //println(tweetsDatesFrequency.collect().mkString(","))
     //-----------------------------------------------
     
-    //Main topics
-//    val topics = reviews.flatMap(splitReviewTitle).filter(valid)
-//    
-//    val topicsFrequency = topics
-//                        .map(topic => (topic,1))
-//                        .reduceByKey((a,b) => a+b)
-//                        .sortBy(tuple => tuple._2, ascending=false)
-//    
-//    println("\n\nMost used topics:")                      
-//    for(k <- topicsFrequency.take(15)){
-//      println("\r"+k._1)
-//    }      
+    //Tweets per hour
+    val tweetsPerHour = tweetsDatesFrequency.map(tuple => (tuple._1,tuple._2/24))
+    
+    //println("\rTweets per hour:")
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/tweets/tweetsPerHour.txt")))
+    writer.write(tweetsPerHour.collect().mkString("\n"))
+    writer.close()
+    //println("\r"+tweetsPerHour.collect().mkString("\r", ",", ""))
     //-----------------------------------------------
+    
+    //Dilma analysis
+    val dilmaTweets = tweets.filter { tweet => tweet.text.contains("dilma") }
+    val dilmaTweetsFrequency = dilmaTweets.flatMap { tweet => tweet.text.split(Array('.','!','?')) }
+                                          .map {sentence => sentence.replace("  ","").replace("   ","")}
+                                          .filter(sentence => sentence.length()>0 && !sentence.contains("http") && sentence.split(" ").size>2 && sentence.contains("dilma"))
+                                          .map { sentence => (sentence.replaceAll("\"",""),1) }
+                                          .reduceByKey((a,b) => a+b)
+                                          .sortBy(tuple => tuple._2, ascending=false)
+    
+    //println("\rDilma's main senteses:")
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/tweets/dilmaSentences.txt")))
+    writer.write(dilmaTweetsFrequency.take(k).mkString("\n"))
+    writer.close()
+    //println("\r"+dilmaTweetsFrequency.take(k).mkString("\r", ",", ""))
+    
+    //Aecio analysis
+    val aecioTweets = tweets.filter { tweet => tweet.text.contains("aecio") || tweet.text.contains("aécio") }
+    val aecioTweetsFrequency = aecioTweets.flatMap { tweet => tweet.text.split(Array('.','!','?')) }
+                                          .map {sentence => sentence.replace("  ","").replace("   ","")}
+                                          .filter(sentence => sentence.length()>0 && !sentence.contains("http") && sentence.split(" ").size>2 && (sentence.contains("aécio") || sentence.contains("aecio")))
+                                          .map { sentence => (sentence.replaceAll("\"",""),1) }
+                                          .reduceByKey((a,b) => a+b)
+                                          .sortBy(tuple => tuple._2, ascending=false)
+    
+    //println("\rAécio's main senteses:")
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/tweets/aecioSentences.txt")))
+    writer.write(aecioTweetsFrequency.take(k).mkString("\n"))
+    writer.close()
+    //println("\r"+aecioTweetsFrequency.take(k).mkString("\r", ",", ""))
+    println("Done")
   }
 
   
@@ -95,7 +145,7 @@ object TweetsMain {
     val fields = line.split("\t")
     //println(fields.length)
     if(fields.length>=8){
-      val text = fields(1).slice(1, fields(1).length()-1)
+      val text = fields(1).slice(1, fields(1).length()-1).replace("(","").replace(")","")
       //println(text)
       //println("Texto obtido")
       val time = fields(7).slice(1, fields(7).length()-1).split(" ")(3)
@@ -125,10 +175,6 @@ object TweetsMain {
     t.text.length()>0
   }
   
-  def valid(word: String): Boolean = {
-    //println(word)
-    word.size>4 && !stopWords.contains(word)
-  }
   
   def getTime(t: String): String = {
     var time ="NIGHT"
