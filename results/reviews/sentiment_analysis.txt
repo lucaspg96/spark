@@ -1,0 +1,6 @@
+VERY_NEGATIVE -> 66                                                             
+VERY_POSITIVE -> 97
+NOT_UNDERSTOOD -> 22
+NEGATIVE -> 3552
+NEUTRAL -> 2362
+POSITIVE -> 1077

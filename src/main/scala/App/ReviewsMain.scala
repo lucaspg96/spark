@@ -1,17 +1,21 @@
+import scala.io.Source
+import java.io.Writer
+
+import org.apache.log4j.Level
+import org.apache.log4j.Logger
+import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
-import org.apache.spark.SparkConf
-
-import org.apache.log4j.{Logger, Level} 
-import Entities.Review
-import org.json4s.jackson.JsonMethods.parse
 import org.json4s._
+import org.json4s.jackson.JsonMethods.parse
 
-import edu.stanford.nlp.sentiment._
-import Utils.SentimentAnalysisUtils.{detectSentiment,SENTIMENT_TYPE}
-
-import scala.io.Source
+import Entities.Review
 import Utils.SentimentAnalysisUtils.SENTIMENT_TYPE
+import Utils.SentimentAnalysisUtils.SENTIMENT_TYPE
+import Utils.SentimentAnalysisUtils.detectSentiment
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
+import java.io.BufferedWriter
 
 
 object ReviewsMain {
@@ -22,6 +26,10 @@ object ReviewsMain {
     val file = "resources/data/eiffel-tower-reviews.json"
     val conf = new SparkConf().setAppName("Reviews Analyzer Application").setMaster("local[*]")
     val sc = new SparkContext(conf)
+    
+    var writer:Writer = null
+    val k = 20
+    
     println("\rStarting")
     
     val reviews = sc.textFile(file).map(mapReview).filter(hasText)
@@ -29,45 +37,53 @@ object ReviewsMain {
     println(f"\r$reviewsCount reviews loaded")
     
     //Counting Reviews text words
-//    val words = reviews.flatMap(splitReviewText).filter(valid)
-//
-//    val wordsFrequency = words
-//                        .map(word => (word,1))
-//                        .reduceByKey((a,b) => a+b)
-//                        .sortBy(tuple => tuple._2, ascending=false)
-//                        
+    val words = reviews.flatMap(splitReviewText).filter(valid)
+
+    val wordsFrequency = words
+                        .map(word => (word,1))
+                        .reduceByKey((a,b) => a+b)
+                        .sortBy(tuple => tuple._2, ascending=false)
+                        
 //    val wordsFrequencyCount = wordsFrequency.count()
 //    println(f"\r$wordsFrequencyCount words mapped")
-//    
-//    println("\n\nMost used words:") 
-//    for(k <- wordsFrequency.take(15)){
-//      println("\r"+k._1)
-//    }
+    
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/reviews/topWords.txt")))
+    writer.write(wordsFrequency.take(k).mkString("\n"))
+    writer.close()
+    //println("\n\nMost used words:") 
+    //println(wordsFrequency.take(15).mkString(","))
     //-----------------------------------------------
     
     //Time distribution
-//    val months = reviews.map(review => (getMonth(review),1))
-//    
-//    val monthsFrequency = months.reduceByKey((a,b) => a+b).sortBy(tuple => tuple._2, ascending=false)
-//
+    val months = reviews.map(review => (getMonth(review),1))
+    
+    val monthsFrequency = months.reduceByKey((a,b) => a+b).sortBy(tuple => tuple._2, ascending=false)
+    
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/reviews/monthsFrequency.txt")))
+    writer.write(monthsFrequency.take(k).mkString("\n"))
+    writer.close()
 //    println("\n\nTime distribution:") 
-//    for(m <- monthsFrequency.collect()){
-//      println("\r"+m._1+" -> "+m._2)
-//    }
+//    println("\r"+monthsFrequency.take(k).mkString(","))
     //-----------------------------------------------
     
     //Main topics
-//    val topics = reviews.flatMap(splitReviewTitle).filter(valid)
-//    
-//    val topicsFrequency = topics
-//                        .map(topic => (topic,1))
-//                        .reduceByKey((a,b) => a+b)
-//                        .sortBy(tuple => tuple._2, ascending=false)
-//    
-//    println("\r\n\nMost used topics:")                      
-//    for(k <- topicsFrequency.take(15)){
-//      println("\r"+k._1)
-//    }      
+    val topics = reviews.flatMap(splitReviewTitle).filter(valid)
+    
+    val topicsFrequency = topics
+                        .map(topic => (topic,1))
+                        .reduceByKey((a,b) => a+b)
+                        .sortBy(tuple => tuple._2, ascending=false)
+    
+    
+    writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream("results/reviews/topTopics.txt")))
+    writer.write(topicsFrequency.take(k).mkString("\n"))
+    writer.close()
+//    println("\r\n\nMost used topics:")  
+//    println("\r"+topicsFrequency.take(k).mkString(","))
+    
     //-----------------------------------------------
     
     //Sentiment Analisis
@@ -81,30 +97,23 @@ object ReviewsMain {
     
     //Sentence Analisis
     val sentences = reviews.flatMap(getSentences)
-    val sentencesCount = sentences.count()
-    println(f"\r$sentencesCount sentences to analyse...")
-//    
-//    val sentencesFrequency = sentences
-//                             .map(sentence => (sentence,1))
-//                             .reduceByKey((a,b) => a+b)
-//                             .sortBy(tuple => tuple._2, ascending=false)
-//    
-//    println("\r\n\nMost used sentences:")
-//    for(k <- sentencesFrequency.take(15)){
-//      println("\r"+k._1+" -> "+k._2)
-//    }
+//    val sentencesCount = sentences.count()
+//    println(f"\r$sentencesCount sentences to analyse...")
     
-    //Sentence Semantic Analisis
-    
-    val sentencesSemanticFrequency = sentences
-                             .map(sentence => (getSentiment(sentence)))
+    val sentencesFrequency = sentences
+                             .map(sentence => (sentence,1))
                              .reduceByKey((a,b) => a+b)
                              .sortBy(tuple => tuple._2, ascending=false)
     
-    println("\r\n\nSentences' semantics:")
-    for(k <- sentencesSemanticFrequency.collect()){
-      println("\r"+k._1+" -> "+k._2)
-    }
+    
+//    writer = new BufferedWriter(
+//                  new OutputStreamWriter(new FileOutputStream("results/reviews/topSentences.txt")))
+    //writer.write(sentencesFrequency.take(k).mkString("\n"))
+    //writer.close()
+    //println("\r\n\nMost used sentences:")
+    println("\r"+sentencesFrequency.take(21).mkString(","))
+    
+    println("\rDone")
   }
 
   
