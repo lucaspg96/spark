@@ -95,18 +95,18 @@ object TweetsMain {
     //println("\r"+tweetsDatesFrequency.collect().mkString(","))
     //-----------------------------------------------
     
-//    for(date <- tweetsDatesFrequency.collect()){
-//      val day = date._1
-//      val tags = tweets.filter(tweet => tweet.date==day).flatMap {tweet => tweet.tags}
-//      val tagsFrequency = tags.map(tag => (tag,1)).reduceByKey((a,b) => a+b).sortBy(tuple => tuple._2, ascending=false)
-//      
-//      writer = new BufferedWriter(
-//                  new OutputStreamWriter(new FileOutputStream(f"results/tweets/$day-tweets.txt")))
-//      writer.write(tagsFrequency.take(k).mkString("\n"))
-//      writer.close()
-//      
-//      //println("\r"+tagsFrequency.take(k).mkString(","))
-//    }
+    for(date <- tweetsDatesFrequency.collect()){
+      val day = date._1
+      val tags = tweets.filter(tweet => tweet.date==day).flatMap {tweet => tweet.tags}
+      val tagsFrequency = tags.map(tag => (tag,1)).reduceByKey((a,b) => a+b).sortBy(tuple => tuple._2, ascending=false)
+      
+      writer = new BufferedWriter(
+                  new OutputStreamWriter(new FileOutputStream(f"results/tweets/$day-tweets.txt")))
+      writer.write(tagsFrequency.take(k).mkString("\n"))
+      writer.close()
+      
+      //println("\r"+tagsFrequency.take(k).mkString(","))
+    }
     
     //Tweets per hour
     val tweetsPerHour = tweetsDatesFrequency.map(tuple => (tuple._1,tuple._2/24))
@@ -167,7 +167,7 @@ object TweetsMain {
       val date = fields(8).slice(1, fields(8).length()-1)
       //println("Data obtida")
       //println(text)
-      val tags = text.split(" ").filter { word => word.length()>0 && word.charAt(0)=='#' }.map{tag => tag.replace("\"", "").replace("”","").replace(" ","")}
+      val tags = text.split(" ").filter { word => word.length()>0 && word.charAt(0)=='#' }.map{tag => tag.replace("\"", "").replace("”","").replace(" ","").toLowerCase()}
       
       new Tweet(text.toLowerCase(),date,time,tags)
     }
